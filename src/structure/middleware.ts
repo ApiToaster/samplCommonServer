@@ -1,7 +1,9 @@
+import apiToaster from 'api-toaster';
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import express from 'express';
+import fileUpload from 'express-fileupload';
 import * as errors from '../errors/index';
 import Log from '../tools/logger/index';
 import type * as types from '../types/index';
@@ -11,7 +13,12 @@ export default class Middleware {
   generateMiddleware(app: Express): void {
     app.use(express.json({ limit: '500kb' }));
     app.use(express.urlencoded({ extended: true }));
-    app.use(bodyParser.json());
+    app.use(bodyParser.text());
+    app.use(
+      fileUpload({
+        limits: { fileSize: 50 * 1024 * 1024 },
+      }),
+    );
     app.use(cookieParser());
     app.use(
       cors({
@@ -19,14 +26,17 @@ export default class Middleware {
         credentials: true,
       }),
     );
-
     app.use((_req: express.Request, res: express.Response, next: express.NextFunction) => {
       res.header('Content-Type', 'application/json;charset=UTF-8');
       res.header('Access-Control-Allow-Credentials', 'true');
       res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
       next();
     });
-
+    app.use((req, res, next) => {
+      apiToaster(req, res, next, {
+        headers: true,
+      });
+    });
     app.use((req, _res, next) => {
       try {
         const logBody: Record<string, string | Record<string, string>> = {
